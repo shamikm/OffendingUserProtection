@@ -1,4 +1,5 @@
-<configuration debug="true"> <!-- This will give you some valuable info about logback config upon runtime. Remove this for production. -->
+<configuration
+        debug="true"> <!-- This will give you some valuable info about logback config upon runtime. Remove this for production. -->
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -7,7 +8,7 @@
     </appender>
 
     <root level="info">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
     </root>
 
 </configuration>
