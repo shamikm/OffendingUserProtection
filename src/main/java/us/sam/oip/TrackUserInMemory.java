@@ -7,17 +7,11 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author shamik.majumdar
  */
 public class TrackUserInMemory implements TrackUser {
-
-    private final int maxYoungEntries;
-    private final int maxOldEntries;
-    private final int maxPermEntries;
-
 
     private final Map<String,Long> youngCache;
     private final Map<String,Long> oldCache;
@@ -39,7 +33,7 @@ public class TrackUserInMemory implements TrackUser {
 
         /**
          * Each time when it runs, it submits a task to the main task executor
-         * to move some entries from source cache to destination cache if the value
+         * to move some entries from source cache to destination cache, if the value
          * in the source cache is found greater than a threshold value
          */
 
@@ -70,23 +64,33 @@ public class TrackUserInMemory implements TrackUser {
     }
 
 
-    public TrackUserInMemory(int maxYoungEntries,int maxOldEntries, int maxPermEntries) {
-        this.maxYoungEntries = maxYoungEntries;
-        this.maxOldEntries = maxOldEntries;
-        this.maxPermEntries = maxPermEntries;
-
-        youngCache = Collections.synchronizedMap(new LRUCache<String,Long>(maxYoungEntries));
-        oldCache = Collections.synchronizedMap(new LRUCache<String, Long>(maxOldEntries));
-        permCache = Collections.synchronizedMap(new LRUCache<String, Long>(maxPermEntries));
+    public TrackUserInMemory(TrackUserConfiguration configuration) {
+        youngCache = Collections.synchronizedMap(new LRUCache<String,Long>(configuration.getMaxYoungEntries()));
+        oldCache = Collections.synchronizedMap(new LRUCache<String, Long>(configuration.getMaxOldEntries()));
+        permCache = Collections.synchronizedMap(new LRUCache<String, Long>(configuration.getMaxPermEntries()));
 
         taskExecutor = Executors.newSingleThreadExecutor();
-        scheduledExecutorService.scheduleAtFixedRate(new MoveIpTask(youngCache,oldCache,2),1,1, TimeUnit.MINUTES);
-        scheduledExecutorService.scheduleAtFixedRate(new MoveIpTask(oldCache,youngCache,10),5,5, TimeUnit.MINUTES);
+        scheduledExecutorService.scheduleAtFixedRate(new MoveIpTask(youngCache,oldCache,configuration.getYoungThreshold()),configuration.getOldPromotionCheckFrequency(),configuration.getOldPromotionCheckFrequency(),configuration.getOldPromotionCheckTimeUnit());
+        scheduledExecutorService.scheduleAtFixedRate(new MoveIpTask(oldCache,permCache,configuration.getOldThreshold()),configuration.getPermPromotionCheckFrequency(),configuration.getPermPromotionCheckFrequency(), configuration.getPermPromotionCheckTimeUnit());
 
     }
 
     private String getKey(String ip, String userId) {
         return ip + userId;
+    }
+
+    //package private getter for test
+
+    Map<String,Long> getYoungCache (){
+        return Collections.unmodifiableMap(youngCache);
+    }
+
+    Map<String,Long> getOldCache (){
+        return Collections.unmodifiableMap(oldCache);
+    }
+
+    Map<String,Long> getPermCache (){
+        return Collections.unmodifiableMap(permCache);
     }
 
     @Override
